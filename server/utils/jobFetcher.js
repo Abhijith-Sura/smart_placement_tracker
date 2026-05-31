@@ -96,7 +96,15 @@ const fetchJson = (url) =>
             let data = '';
             res.on('data', chunk => { data += chunk; });
             res.on('end', () => {
-                try   { resolve(JSON.parse(data)); }
+                try {
+                    // Some APIs (e.g. RemoteOK) return non-JSON when they block the request
+                    const trimmed = data.trim();
+                    if (!trimmed.startsWith('[') && !trimmed.startsWith('{')) {
+                        resolve([]);
+                        return;
+                    }
+                    resolve(JSON.parse(data));
+                }
                 catch (e) { reject(e); }
             });
         }).on('error', reject);
