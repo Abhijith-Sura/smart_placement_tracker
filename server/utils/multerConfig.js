@@ -1,7 +1,7 @@
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const path = require('path');
+const fs = require('fs');
 
 // ─── Configure Cloudinary ─────────────────────────────────
 cloudinary.config({
@@ -13,22 +13,38 @@ cloudinary.config({
 // ─── Check if Cloudinary is configured ───────────────────
 const isCloudinaryConfigured = () =>
     process.env.CLOUDINARY_CLOUD_NAME &&
-    process.env.CLOUDINARY_CLOUD_NAME !== 'your_cloud_name';
+    process.env.CLOUDINARY_CLOUD_NAME !== 'your_cloud_name' &&
+    process.env.CLOUDINARY_CLOUD_NAME !== 'root';
 
-// ─── Resume Storage (Cloudinary or Local) ────────────────
-const getResumeStorage = () => {
-    if (isCloudinaryConfigured()) {
-        return new CloudinaryStorage({
-            cloudinary,
-            params: {
-                folder:         'smart_placement/resumes',
-                allowed_formats: ['pdf', 'doc', 'docx'],
-                resource_type:  'raw', // Cloudinary uses 'raw' for non-image files
-                transformation: [],
-            },
-        });
+// ─── Safe Cloudinary Upload Helper ────────────────────────
+const uploadToCloudinary = async (filePath, folder, resourceType = 'auto') => {
+    if (!isCloudinaryConfigured()) {
+        console.log('[Cloudinary] Skipping Cloudinary upload - not configured.');
+        return null;
     }
-    // Local fallback
+    try {
+        console.log(`[Cloudinary] Uploading ${filePath} to folder ${folder}...`);
+        const result = await cloudinary.uploader.upload(filePath, {
+            folder,
+            resource_type: resourceType,
+        });
+        console.log('[Cloudinary] Upload successful:', result.secure_url);
+        return {
+            url: result.secure_url,
+            publicId: result.public_id,
+        };
+    } catch (err) {
+        console.error(`⚠️ [Cloudinary] Upload failed for ${filePath}:`, err.message || err);
+        return null; // Return null so controller falls back to local storage URL
+    }
+};
+
+// ─── Multer Disk Storages (Always use local disk storage as standard to avoid middleware crash) ───
+
+const getResumeStorage = () => {
+    if (!fs.existsSync('uploads/resumes/')) {
+        fs.mkdirSync('uploads/resumes/', { recursive: true });
+    }
     return multer.diskStorage({
         destination: (req, file, cb) => cb(null, 'uploads/resumes/'),
         filename:    (req, file, cb) =>
@@ -36,17 +52,9 @@ const getResumeStorage = () => {
     });
 };
 
-// ─── Profile Picture Storage ──────────────────────────────
 const getProfilePicStorage = () => {
-    if (isCloudinaryConfigured()) {
-        return new CloudinaryStorage({
-            cloudinary,
-            params: {
-                folder:         'smart_placement/profile_pics',
-                allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-                transformation: [{ width: 400, height: 400, crop: 'fill', gravity: 'face' }],
-            },
-        });
+    if (!fs.existsSync('uploads/profiles/')) {
+        fs.mkdirSync('uploads/profiles/', { recursive: true });
     }
     return multer.diskStorage({
         destination: (req, file, cb) => cb(null, 'uploads/profiles/'),
@@ -55,22 +63,36 @@ const getProfilePicStorage = () => {
     });
 };
 
-// ─── Company Logo Storage ─────────────────────────────────
 const getLogoStorage = () => {
-    if (isCloudinaryConfigured()) {
-        return new CloudinaryStorage({
-            cloudinary,
-            params: {
-                folder:         'smart_placement/logos',
-                allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'svg'],
-                transformation: [{ width: 200, height: 200, crop: 'pad', background: 'transparent' }],
-            },
-        });
+    if (!fs.existsSync('uploads/logos/')) {
+        fs.mkdirSync('uploads/logos/', { recursive: true });
     }
     return multer.diskStorage({
         destination: (req, file, cb) => cb(null, 'uploads/logos/'),
         filename:    (req, file, cb) =>
             cb(null, `${req.user._id}-logo-${Date.now()}${path.extname(file.originalname)}`),
+    });
+};
+
+const getEventMediaStorage = () => {
+    if (!fs.existsSync('uploads/events/')) {
+        fs.mkdirSync('uploads/events/', { recursive: true });
+    }
+    return multer.diskStorage({
+        destination: (req, file, cb) => cb(null, 'uploads/events/'),
+        filename:    (req, file, cb) =>
+            cb(null, `event-${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`),
+    });
+};
+
+const getVerificationStorage = () => {
+    if (!fs.existsSync('uploads/verifications/')) {
+        fs.mkdirSync('uploads/verifications/', { recursive: true });
+    }
+    return multer.diskStorage({
+        destination: (req, file, cb) => cb(null, 'uploads/verifications/'),
+        filename:    (req, file, cb) =>
+            cb(null, `${req.user._id}-verification-${Date.now()}${path.extname(file.originalname)}`),
     });
 };
 
@@ -93,6 +115,24 @@ const imageFileFilter = (req, file, cb) => {
     }
 };
 
+const eventMediaFileFilter = (req, file, cb) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/')) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only image, video, and audio files are allowed for event attachments'), false);
+    }
+};
+
+const verificationFileFilter = (req, file, cb) => {
+    const allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only PDF and image files (JPG, PNG, WEBP) are allowed for verification documents'), false);
+    }
+};
+
 // ─── Multer Upload Instances ──────────────────────────────
 const uploadResume = multer({
     storage: getResumeStorage(),
@@ -112,7 +152,18 @@ const uploadLogo = multer({
     limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
 });
 
-// ─── Bulk Upload (Excel — memory storage) ────────────────
+const uploadEventMedia = multer({
+    storage: getEventMediaStorage(),
+    fileFilter: eventMediaFileFilter,
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+});
+
+const uploadVerificationDoc = multer({
+    storage: getVerificationStorage(),
+    fileFilter: verificationFileFilter,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+});
+
 const uploadExcel = multer({
     storage: multer.memoryStorage(),
     fileFilter: (req, file, cb) => {
@@ -136,87 +187,6 @@ const deleteFromCloudinary = async (publicId, resourceType = 'image') => {
     }
 };
 
-// ─── Event Media Storage (Cloudinary or Local) ─────────────
-const getEventMediaStorage = () => {
-    if (isCloudinaryConfigured()) {
-        return new CloudinaryStorage({
-            cloudinary,
-            params: {
-                folder:         'smart_placement/event_media',
-                resource_type:  'auto',
-            },
-        });
-    }
-    
-    // Ensure local folder exists
-    const fs = require('fs');
-    if (!fs.existsSync('uploads/events/')) {
-        fs.mkdirSync('uploads/events/', { recursive: true });
-    }
-    
-    return multer.diskStorage({
-        destination: (req, file, cb) => cb(null, 'uploads/events/'),
-        filename:    (req, file, cb) =>
-            cb(null, `event-${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`),
-    });
-};
-
-const eventMediaFileFilter = (req, file, cb) => {
-    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/')) {
-        cb(null, true);
-    } else {
-        cb(new Error('Only image, video, and audio files are allowed for event attachments'), false);
-    }
-};
-
-const uploadEventMedia = multer({
-    storage: getEventMediaStorage(),
-    fileFilter: eventMediaFileFilter,
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
-});
-
-// ─── Verification Document Storage (Cloudinary or Local) ─────────────
-const getVerificationStorage = () => {
-    if (isCloudinaryConfigured()) {
-        return new CloudinaryStorage({
-            cloudinary,
-            params: {
-                folder:         'smart_placement/verifications',
-                allowed_formats: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
-                resource_type:  'auto',
-            },
-        });
-    }
-    
-    // Ensure local folder exists
-    const fs = require('fs');
-    if (!fs.existsSync('uploads/verifications/')) {
-        fs.mkdirSync('uploads/verifications/', { recursive: true });
-    }
-    
-    return multer.diskStorage({
-        destination: (req, file, cb) => cb(null, 'uploads/verifications/'),
-        filename:    (req, file, cb) =>
-            cb(null, `${req.user._id}-verification-${Date.now()}${path.extname(file.originalname)}`),
-    });
-};
-
-const verificationFileFilter = (req, file, cb) => {
-    const allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Only PDF and image files (JPG, PNG, WEBP) are allowed for verification documents'), false);
-    }
-};
-
-const uploadVerificationDoc = multer({
-    storage: getVerificationStorage(),
-    fileFilter: verificationFileFilter,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
-});
-
 module.exports = {
     uploadResume,
     uploadProfilePic,
@@ -225,5 +195,6 @@ module.exports = {
     uploadEventMedia,
     uploadVerificationDoc,
     deleteFromCloudinary,
+    uploadToCloudinary,
     cloudinary,
 };

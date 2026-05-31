@@ -2,7 +2,8 @@ const asyncHandler = require('express-async-handler');
 const Company = require('../models/Company');
 const Job = require('../models/Job');
 const Application = require('../models/Application');
-const { uploadLogo, deleteFromCloudinary } = require('../utils/multerConfig');
+const { uploadLogo, deleteFromCloudinary, uploadToCloudinary } = require('../utils/multerConfig');
+const fs = require('fs');
 
 // ─── @route  GET /api/companies/profile ──────────────────
 // ─── @access Private (company) ────────────────────────────
@@ -58,12 +59,25 @@ const uploadCompanyLogo = asyncHandler(async (req, res) => {
 
     const company = await Company.findOne({ userId: req.user._id });
 
-    if (company.logoPublicId) {
-        await deleteFromCloudinary(company.logoPublicId);
-    }
+    const localPath = req.file.path.replace(/\\/g, '/');
+    const folder = 'smart_placement/logos';
+    const cloudinaryData = await uploadToCloudinary(localPath, folder, 'image');
 
-    const logoUrl      = req.file.path || req.file.secure_url || `/uploads/logos/${req.file.filename}`;
-    const logoPublicId = req.file.public_id || '';
+    let logoUrl = `/uploads/logos/${req.file.filename}`;
+    let logoPublicId = '';
+
+    if (cloudinaryData && cloudinaryData.url) {
+        logoUrl = cloudinaryData.url;
+        logoPublicId = cloudinaryData.publicId;
+
+        if (company.logoPublicId) {
+            await deleteFromCloudinary(company.logoPublicId);
+        }
+
+        fs.unlink(req.file.path, (err) => {
+            if (err) console.error('[Cleanup] Failed to delete local temp file:', err.message);
+        });
+    }
 
     await Company.findOneAndUpdate(
         { userId: req.user._id },

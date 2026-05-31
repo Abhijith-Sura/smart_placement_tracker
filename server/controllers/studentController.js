@@ -2,8 +2,9 @@ const asyncHandler = require('express-async-handler');
 const StudentProfile = require('../models/StudentProfile');
 const Application = require('../models/Application');
 const Job = require('../models/Job');
-const { uploadResume, uploadProfilePic, deleteFromCloudinary } = require('../utils/multerConfig');
+const { uploadResume, uploadProfilePic, deleteFromCloudinary, uploadToCloudinary } = require('../utils/multerConfig');
 const APIFeatures = require('../utils/apiFeatures');
+const fs = require('fs');
 
 // ─── @route  GET /api/students/profile ───────────────────
 // ─── @access Private (student) ────────────────────────────
@@ -80,14 +81,25 @@ const uploadStudentResume = asyncHandler(async (req, res) => {
 
     const profile = await StudentProfile.findOne({ userId: req.user._id });
 
-    // Delete old resume from Cloudinary if it exists
-    if (profile.resumePublicId) {
-        await deleteFromCloudinary(profile.resumePublicId, 'raw');
-    }
+    const localPath = req.file.path.replace(/\\/g, '/');
+    const folder = 'smart_placement/resumes';
+    const cloudinaryData = await uploadToCloudinary(localPath, folder, 'raw');
 
-    const rawPath = req.file.path || req.file.secure_url || `/uploads/resumes/${req.file.filename}`;
-    const resumeUrl = rawPath.replace(/\\/g, '/');
-    const resumePublicId = req.file.public_id || '';
+    let resumeUrl = `/uploads/resumes/${req.file.filename}`;
+    let resumePublicId = '';
+
+    if (cloudinaryData && cloudinaryData.url) {
+        resumeUrl = cloudinaryData.url;
+        resumePublicId = cloudinaryData.publicId;
+
+        if (profile.resumePublicId) {
+            await deleteFromCloudinary(profile.resumePublicId, 'raw');
+        }
+
+        fs.unlink(req.file.path, (err) => {
+            if (err) console.error('[Cleanup] Failed to delete local temp file:', err.message);
+        });
+    }
 
     await StudentProfile.findOneAndUpdate(
         { userId: req.user._id },
@@ -117,13 +129,25 @@ const uploadProfilePicture = asyncHandler(async (req, res) => {
 
     const profile = await StudentProfile.findOne({ userId: req.user._id });
 
-    if (profile.profilePicPublicId) {
-        await deleteFromCloudinary(profile.profilePicPublicId, 'image');
-    }
+    const localPath = req.file.path.replace(/\\/g, '/');
+    const folder = 'smart_placement/profile_pics';
+    const cloudinaryData = await uploadToCloudinary(localPath, folder, 'image');
 
-    const rawPath = req.file.path || req.file.secure_url || `/uploads/profiles/${req.file.filename}`;
-    const profilePicUrl = rawPath.replace(/\\/g, '/');
-    const profilePicPublicId = req.file.public_id || '';
+    let profilePicUrl = `/uploads/profiles/${req.file.filename}`;
+    let profilePicPublicId = '';
+
+    if (cloudinaryData && cloudinaryData.url) {
+        profilePicUrl = cloudinaryData.url;
+        profilePicPublicId = cloudinaryData.publicId;
+
+        if (profile.profilePicPublicId) {
+            await deleteFromCloudinary(profile.profilePicPublicId, 'image');
+        }
+
+        fs.unlink(req.file.path, (err) => {
+            if (err) console.error('[Cleanup] Failed to delete local temp file:', err.message);
+        });
+    }
 
     await StudentProfile.findOneAndUpdate(
         { userId: req.user._id },
@@ -297,9 +321,21 @@ const uploadVerificationDocument = asyncHandler(async (req, res) => {
         throw new Error('Student profile not found');
     }
 
-    const rawPath = req.file.path || req.file.secure_url || `/uploads/verifications/${req.file.filename}`;
-    const fileUrl = rawPath.replace(/\\/g, '/');
-    const filePublicId = req.file.public_id || '';
+    const localPath = req.file.path.replace(/\\/g, '/');
+    const folder = 'smart_placement/verifications';
+    const cloudinaryData = await uploadToCloudinary(localPath, folder, 'raw');
+
+    let fileUrl = `/uploads/verifications/${req.file.filename}`;
+    let filePublicId = '';
+
+    if (cloudinaryData && cloudinaryData.url) {
+        fileUrl = cloudinaryData.url;
+        filePublicId = cloudinaryData.publicId;
+
+        fs.unlink(req.file.path, (err) => {
+            if (err) console.error('[Cleanup] Failed to delete local temp file:', err.message);
+        });
+    }
 
     // Append document to array
     profile.verificationDocuments.push({

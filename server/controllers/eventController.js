@@ -371,6 +371,9 @@ const cancelRsvpToEvent = asyncHandler(async (req, res) => {
     });
 });
 
+const { uploadToCloudinary } = require('../utils/multerConfig');
+const fs = require('fs');
+
 // ─── @route  POST /api/events/upload-media ────────────────
 // ─── @access Private (Admin, Company) ─────────────────────
 const uploadMedia = asyncHandler(async (req, res) => {
@@ -379,10 +382,19 @@ const uploadMedia = asyncHandler(async (req, res) => {
         throw new Error('Please upload a file');
     }
     
-    const fileUrl = req.file.path || req.file.secure_url;
-    const cleanUrl = fileUrl.startsWith('http') 
-        ? fileUrl 
-        : `/uploads/events/${req.file.filename}`;
+    const localPath = req.file.path.replace(/\\/g, '/');
+    const folder = 'smart_placement/event_media';
+    
+    const cloudinaryData = await uploadToCloudinary(localPath, folder, 'auto');
+    
+    let cleanUrl = `/uploads/events/${req.file.filename}`;
+    
+    if (cloudinaryData && cloudinaryData.url) {
+        cleanUrl = cloudinaryData.url;
+        fs.unlink(req.file.path, (err) => {
+            if (err) console.error('[Cleanup] Failed to delete local temp file:', err.message);
+        });
+    }
 
     res.status(200).json({
         success: true,
