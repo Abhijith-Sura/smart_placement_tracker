@@ -244,15 +244,34 @@ export default function ApplicationRounds() {
                             {round.mode === 'online' ? (
                               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                                 <div className="flex items-center gap-1.5 text-slate-600 font-bold"><Video className="w-4 h-4 text-emerald-500" /> Online</div>
-                                {round.venue && (
-                                  <a 
-                                    href={round.venue.startsWith('http') ? round.venue : `https://${round.venue}`} 
-                                    target="_blank" 
-                                    rel="noreferrer noopener"
-                                    className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 px-3 py-1.5 rounded-xl transition-all"
-                                  >
-                                    Join Google Meet
-                                  </a>
+                                {['technical', 'hr', 'group_discussion'].includes(round.type?.toLowerCase()) && (
+                                  (() => {
+                                    const hasValidLink = round.venue && 
+                                      (round.venue.startsWith('http') || 
+                                       round.venue.includes('.') || 
+                                       round.venue.includes('meet.google.com') || 
+                                       round.venue.includes('zoom.us'));
+                                    
+                                    const meetingLink = hasValidLink 
+                                      ? (round.venue.startsWith('http') ? round.venue : `https://${round.venue}`) 
+                                      : 'https://meet.google.com/pla-ceiq-tpo';
+
+                                    const isZoom = meetingLink.includes('zoom.us');
+                                    const label = hasValidLink 
+                                      ? (isZoom ? 'Join Zoom Meeting' : 'Join Meeting Link') 
+                                      : 'Join Google Meet';
+
+                                    return (
+                                      <a 
+                                        href={meetingLink} 
+                                        target="_blank" 
+                                        rel="noreferrer noopener"
+                                        className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 px-3 py-1.5 rounded-xl transition-all"
+                                      >
+                                        {label}
+                                      </a>
+                                    );
+                                  })()
                                 )}
                               </div>
                             ) : (
