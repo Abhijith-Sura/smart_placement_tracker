@@ -157,38 +157,15 @@ app.get('/api/health', (req, res) => {
 
 // ─── Serve React Frontend in Production ──────────────────
 if (process.env.NODE_ENV === 'production') {
-    const fs = require('fs');
-    const clientBuildPath = path.resolve(__dirname, '..', 'client', 'dist');
-    const indexPath = path.join(clientBuildPath, 'index.html');
-
-    console.log(`📂 Serving static files from: ${clientBuildPath}`);
-    console.log(`📂 Directory exists: ${fs.existsSync(clientBuildPath)}`);
-    console.log(`📂 index.html exists: ${fs.existsSync(indexPath)}`);
-
-    // List files in dist for debugging
-    if (fs.existsSync(clientBuildPath)) {
-        const files = fs.readdirSync(clientBuildPath);
-        console.log(`📂 dist contents: ${files.join(', ')}`);
-        const assetsPath = path.join(clientBuildPath, 'assets');
-        if (fs.existsSync(assetsPath)) {
-            const assetFiles = fs.readdirSync(assetsPath);
-            console.log(`📂 dist/assets contents: ${assetFiles.join(', ')}`);
-        }
-    }
+    const clientBuildPath = path.join(__dirname, 'public');
 
     app.use(express.static(clientBuildPath));
 
-    // All non-API routes serve the React SPA
     app.get('*', (req, res, next) => {
         if (req.path.startsWith('/api')) return next();
-        if (fs.existsSync(indexPath)) {
-            res.sendFile(indexPath);
-        } else {
-            res.status(500).send('Frontend build not found. Run npm run build:client');
-        }
+        res.sendFile(path.join(clientBuildPath, 'index.html'));
     });
 } else {
-    // ─── 404 handler (dev only — in prod, SPA handles routing) ───
     app.use((req, res) => {
         res.status(404).json({
             success: false,
