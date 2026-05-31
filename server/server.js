@@ -157,12 +157,15 @@ app.get('/api/health', (req, res) => {
 
 // ─── Serve React Frontend in Production ──────────────────
 if (process.env.NODE_ENV === 'production') {
-    const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
+    const clientBuildPath = path.resolve(__dirname, '..', 'client', 'dist');
+    console.log(`📂 Serving static files from: ${clientBuildPath}`);
+    console.log(`📂 Directory exists: ${require('fs').existsSync(clientBuildPath)}`);
+
     app.use(express.static(clientBuildPath));
 
     // All non-API routes serve the React SPA
-    app.get('*', (req, res) => {
-        res.sendFile(path.resolve(clientBuildPath, 'index.html'));
+    app.get(/^(?!\/api).*/, (req, res) => {
+        res.sendFile(path.join(clientBuildPath, 'index.html'));
     });
 } else {
     // ─── 404 handler (dev only — in prod, SPA handles routing) ───
