@@ -11,6 +11,7 @@ const {
     getApplicationRounds,
     addRound,
     updateRound,
+    deleteRound,
     exportJobApplications,
     backfillMatchScores,
 } = require('../controllers/applicationController');
@@ -37,5 +38,6 @@ router.patch('/:id/status',            authorize('admin', 'company'), updateAppl
 router.get('/:id/rounds',               getApplicationRounds);  // student can view own (auth enforced in controller)
 router.post('/:id/rounds',              authorize('admin', 'company'), addRound);
 router.patch('/:id/rounds/:roundIndex', authorize('admin', 'company'), updateRound);
+router.delete('/:id/rounds/:roundIndex', authorize('admin', 'company'), deleteRound);
 
 module.exports = router;

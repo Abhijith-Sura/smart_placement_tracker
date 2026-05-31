@@ -646,7 +646,7 @@ const updateRound = asyncHandler(async (req, res) => {
     const { roundIndex } = req.params;
     const idx = parseInt(roundIndex, 10);
 
-    const { status, feedback, score, conductedAt, conductedBy } = req.body;
+    const { status, feedback, score, conductedAt, conductedBy, name, type, mode, scheduledAt, venue } = req.body;
 
     const application = await Application.findById(req.params.id)
         .populate('studentId', 'name email')
@@ -674,6 +674,11 @@ const updateRound = asyncHandler(async (req, res) => {
     if (score       !== undefined) round.score       = score;
     if (conductedAt !== undefined) round.conductedAt = conductedAt;
     if (conductedBy !== undefined) round.conductedBy = conductedBy;
+    if (name        !== undefined) round.name        = name;
+    if (type        !== undefined) round.type        = type;
+    if (mode        !== undefined) round.mode        = mode;
+    if (scheduledAt !== undefined) round.scheduledAt = scheduledAt;
+    if (venue       !== undefined) round.venue       = venue;
 
     // Send ICS email if it just got scheduled
     if (wasPending && round.status === 'scheduled') {
@@ -826,6 +831,52 @@ const backfillMatchScores = asyncHandler(async (req, res) => {
     });
 });
 
+const deleteRound = asyncHandler(async (req, res) => {
+    const { roundIndex } = req.params;
+    const idx = parseInt(roundIndex, 10);
+
+    const application = await Application.findById(req.params.id);
+
+    if (!application) {
+        res.status(404);
+        throw new Error('Application not found');
+    }
+
+    if (idx < 0 || idx >= application.rounds.length) {
+        res.status(400);
+        throw new Error(`Round index ${idx} is out of bounds (application has ${application.rounds.length} round(s))`);
+    }
+
+    const removedRound = application.rounds[idx];
+    application.rounds.splice(idx, 1);
+
+    if (application.currentRound >= application.rounds.length) {
+        application.currentRound = Math.max(0, application.rounds.length - 1);
+    }
+
+    await application.save();
+
+    const io = req.app.get('io');
+    if (io) {
+        emitToUser(io, application.studentId, EVENTS.ROUND_UPDATED, {
+            applicationId: application._id,
+            roundIndex:    idx,
+            action:        'deleted',
+        });
+        emitToAdmins(io, EVENTS.ROUND_UPDATED, {
+            applicationId: application._id,
+            roundIndex:    idx,
+            action:        'deleted',
+        });
+    }
+
+    res.status(200).json({
+        success: true,
+        message: `Round '${removedRound.name}' deleted successfully`,
+        application,
+    });
+});
+
 module.exports = {
     applyForJob,
     getMyApplications,
@@ -837,6 +888,7 @@ module.exports = {
     getApplicationRounds,
     addRound,
     updateRound,
+    deleteRound,
     exportJobApplications,
     backfillMatchScores,
 };

@@ -102,6 +102,49 @@ export default function ApplicationRounds() {
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to update round'),
   })
 
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [roundToEditIndex, setRoundToEditIndex] = useState(null)
+  const editDetailsForm = useForm()
+
+  const deleteRoundMutation = useMutation({
+    mutationFn: (idx) => API.delete(`/applications/${id}/rounds/${idx}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applicationRounds', id] })
+      toast.success('Round deleted successfully!')
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete round'),
+  })
+
+  const editDetailsMutation = useMutation({
+    mutationFn: ({ idx, payload }) => API.patch(`/applications/${id}/rounds/${idx}`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applicationRounds', id] })
+      toast.success('Round details updated!')
+      setShowEditModal(false)
+      editDetailsForm.reset()
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to update round details'),
+  })
+
+  const handleEditDetailsClick = (round, idx) => {
+    setRoundToEditIndex(idx)
+    editDetailsForm.reset({
+      name: round.name,
+      type: round.type,
+      mode: round.mode,
+      scheduledAt: round.scheduledAt ? new Date(round.scheduledAt).toISOString().slice(0, 16) : '',
+      venue: round.venue || '',
+    })
+    setShowEditModal(true)
+  }
+
+  const onEditDetailsSubmit = (data) => {
+    editDetailsMutation.mutate({
+      idx: roundToEditIndex,
+      payload: data,
+    })
+  }
+
   const onAddSubmit = (data) => addRoundMutation.mutate(data)
   
   const onUpdateSubmit = (data) => {
@@ -281,6 +324,7 @@ export default function ApplicationRounds() {
                         </div>
 
                       {editingRound !== idx && !isStudent && (
+                        <div className="flex flex-wrap items-center gap-2">
                           <button 
                             onClick={() => {
                               setEditingRound(idx)
@@ -290,11 +334,28 @@ export default function ApplicationRounds() {
                                 score: round.score || '',
                               })
                             }}
-                            className="text-sm font-bold text-violet-500 hover:text-violet-600 bg-violet-50 px-4 py-2 rounded-xl transition-colors"
+                            className="text-xs font-bold text-violet-600 hover:bg-violet-50 bg-violet-50/5 border border-violet-100 px-3.5 py-2 rounded-xl transition-all"
                           >
                             Update Result
                           </button>
-                        )}
+                          <button 
+                            onClick={() => handleEditDetailsClick(round, idx)}
+                            className="text-xs font-bold text-slate-600 hover:bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl transition-all"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this round permanently?')) {
+                                deleteRoundMutation.mutate(idx)
+                              }
+                            }}
+                            className="text-xs font-bold text-red-600 hover:bg-red-50 border border-red-100 px-3.5 py-2 rounded-xl transition-all"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
 
                         {isStudent && round.type === 'coding' && (round.status === 'pending' || round.status === 'scheduled') && (
                           <button
@@ -440,6 +501,68 @@ export default function ApplicationRounds() {
                     <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-3 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
                     <Button type="submit" disabled={addRoundMutation.isPending} className="flex-1">
                       {addRoundMutation.isPending ? 'Saving...' : 'Add Round'}
+                    </Button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit Modal */}
+        <AnimatePresence>
+          {showEditModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                onClick={() => setShowEditModal(false)}
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                className="relative bg-white rounded-3xl shadow-2xl p-8 w-full max-w-lg border border-slate-100"
+              >
+                <h2 className="text-2xl font-bold text-slate-900 mb-6">Edit Round Details</h2>
+                <form onSubmit={editDetailsForm.handleSubmit(onEditDetailsSubmit)} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Round Name</label>
+                    <input {...editDetailsForm.register('name', { required: true })} placeholder="e.g. Technical Round 1" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all" />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Type</label>
+                      <select {...editDetailsForm.register('type')} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all">
+                        <option value="aptitude">Aptitude</option>
+                        <option value="technical">Technical</option>
+                        <option value="hr">HR</option>
+                        <option value="group_discussion">Group Discussion</option>
+                        <option value="coding">Coding</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mode</label>
+                      <select {...editDetailsForm.register('mode')} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all">
+                        <option value="online">Online</option>
+                        <option value="offline">Offline</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Scheduled Date & Time</label>
+                    <input type="datetime-local" {...editDetailsForm.register('scheduledAt')} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Venue / Link</label>
+                    <input {...editDetailsForm.register('venue')} placeholder="Zoom link or Room 101" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all" />
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 py-3 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
+                    <Button type="submit" disabled={editDetailsMutation.isPending} className="flex-1">
+                      {editDetailsMutation.isPending ? 'Saving...' : 'Save Changes'}
                     </Button>
                   </div>
                 </form>
