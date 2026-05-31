@@ -262,7 +262,11 @@ const updateEvent = asyncHandler(async (req, res) => {
 
     allowedFields.forEach((field) => {
         if (req.body[field] !== undefined) {
-            event[field] = req.body[field];
+            if (field === 'relatedJob' && req.body[field] === '') {
+                event[field] = null;
+            } else {
+                event[field] = req.body[field];
+            }
         }
     });
 
