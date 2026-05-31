@@ -52,7 +52,7 @@ export default function Analytics() {
   const handleExportPDF = async () => {
     const toastId = toast.loading('Generating Executive Boardroom Report...')
     try {
-      const res = await API.get('/api/admin/export-pdf', { responseType: 'blob' })
+      const res = await API.get('/admin/export-pdf', { responseType: 'blob' })
       const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
       const a   = document.createElement('a')
       a.href    = url
