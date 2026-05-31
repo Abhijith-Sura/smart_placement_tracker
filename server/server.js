@@ -48,8 +48,12 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: (origin, callback) => {
-            // Allow any localhost port (Vite picks 5173, 5174, etc. dynamically)
-            if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+            if (!origin
+                || /^http:\/\/localhost:\d+$/.test(origin)
+                || /\.vercel\.app$/.test(origin)
+                || /\.onrender\.com$/.test(origin)
+                || origin === process.env.CLIENT_URL
+            ) {
                 callback(null, true);
             } else {
                 callback(new Error('Not allowed by CORS'));
@@ -107,8 +111,12 @@ io.on('connection', (socket) => {
 // ─── Core Middleware ──────────────────────────────────────
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow any localhost port (Vite picks 5173, 5174, etc. dynamically)
-        if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+        if (!origin
+            || /^http:\/\/localhost:\d+$/.test(origin)
+            || /\.vercel\.app$/.test(origin)
+            || /\.onrender\.com$/.test(origin)
+            || origin === process.env.CLIENT_URL
+        ) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -155,24 +163,13 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// ─── Serve React Frontend in Production ──────────────────
-if (process.env.NODE_ENV === 'production') {
-    const clientBuildPath = path.join(__dirname, 'public');
-
-    app.use(express.static(clientBuildPath));
-
-    app.get('*', (req, res, next) => {
-        if (req.path.startsWith('/api')) return next();
-        res.sendFile(path.join(clientBuildPath, 'index.html'));
+// ─── 404 handler ─────────────────────────────────────────
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        message: `Route not found: ${req.method} ${req.originalUrl}`,
     });
-} else {
-    app.use((req, res) => {
-        res.status(404).json({
-            success: false,
-            message: `Route not found: ${req.method} ${req.originalUrl}`,
-        });
-    });
-}
+});
 
 // ─── Global Error Handler ────────────────────────────────
 app.use(errorHandler);
