@@ -131,11 +131,17 @@ export default function Analytics() {
             {monthly.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={monthly} margin={{ top:5, right:10, left:-20, bottom:0 }}>
+                  <defs>
+                    <linearGradient id="colorPlacements" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f97316" stopOpacity={0.95}/>
+                      <stop offset="100%" stopColor="#ea580c" stopOpacity={0.4}/>
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="label" tick={{ fontSize:11, fill:'#94a3b8' }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize:11, fill:'#94a3b8' }} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ borderRadius:'12px', fontSize:'13px', border:'1px solid #e2e8f0' }} />
-                  <Bar dataKey="count" fill="#8b5cf6" radius={[6,6,0,0]} name="Placements" />
+                  <Tooltip contentStyle={{ borderRadius:'12px', fontSize:'13px', border:'1px solid #e2e8f0', boxShadow:'0 4px 12px rgba(0,0,0,0.05)' }} />
+                  <Bar dataKey="count" fill="url(#colorPlacements)" maxBarSize={32} radius={[6,6,0,0]} name="Placements" />
                 </BarChart>
               </ResponsiveContainer>
             ) : <p className="text-sm text-slate-400 text-center py-12">No data yet</p>}
@@ -209,11 +215,17 @@ export default function Analytics() {
             {branchChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={branchChartData} layout="vertical" margin={{ top:0, right:10, left:0, bottom:0 }}>
+                  <defs>
+                    <linearGradient id="colorBranchRate" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.95}/>
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize:11, fill:'#94a3b8' }} tickLine={false} axisLine={false} unit="%" />
                   <YAxis type="category" dataKey="name" tick={{ fontSize:11, fill:'#94a3b8' }} tickLine={false} axisLine={false} width={36} />
-                  <Tooltip contentStyle={{ borderRadius:'12px', fontSize:'13px' }} formatter={v => `${v}%`} />
-                  <Bar dataKey="Rate" fill="#8b5cf6" radius={[0,6,6,0]} name="Placement Rate" />
+                  <Tooltip contentStyle={{ borderRadius:'12px', fontSize:'13px', border:'1px solid #e2e8f0' }} formatter={v => `${v}%`} />
+                  <Bar dataKey="Rate" fill="url(#colorBranchRate)" maxBarSize={20} radius={[0,6,6,0]} name="Placement Rate" />
                 </BarChart>
               </ResponsiveContainer>
             ) : <p className="text-sm text-slate-400 text-center py-12">No data</p>}
@@ -263,11 +275,17 @@ export default function Analytics() {
           <SectionCard title="Package Distribution" subtitle="Number of offers by package range" icon={Package}>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={pkgChartData} margin={{ top:5, right:10, left:-20, bottom:0 }}>
+                <defs>
+                  <linearGradient id="colorOffers" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.95}/>
+                    <stop offset="100%" stopColor="#059669" stopOpacity={0.4}/>
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="range" tick={{ fontSize:11, fill:'#94a3b8' }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize:11, fill:'#94a3b8' }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ borderRadius:'12px', fontSize:'13px' }} />
-                <Bar dataKey="Count" fill="#8b5cf6" radius={[6,6,0,0]} name="Offers" />
+                <Tooltip contentStyle={{ borderRadius:'12px', fontSize:'13px', border:'1px solid #e2e8f0' }} />
+                <Bar dataKey="Count" fill="url(#colorOffers)" maxBarSize={32} radius={[6,6,0,0]} name="Offers" />
               </BarChart>
             </ResponsiveContainer>
           </SectionCard>
