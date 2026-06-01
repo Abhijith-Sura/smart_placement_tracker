@@ -5,8 +5,8 @@
 [![WebSocket](https://img.shields.io/badge/Real_Time-Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](#)
 
-Live Frontend Deployment: https://placeiq-frontend.vercel.app  
-Live Backend Deployment: https://placeiq-smart-placement.onrender.com  
+Live Frontend Deployment (Vercel): https://smart-placement-tracker.vercel.app  
+Live Backend Deployment (Render): https://placeiq-smart-placement.onrender.com  
 
 PlaceIQ is a comprehensive, full-stack campus recruitment platform designed to coordinate and automate the placement lifecycle. Developed on the MERN stack (MongoDB, Express, React, Node.js), it acts as a unified hub connecting students, Training & Placement Officers (TPOs), corporate HR representatives, and alumni.
 
