@@ -1,130 +1,106 @@
-# PlaceIQ Frontend Engineering Documentation
+# 🚀 PlaceIQ Client — Premium React 19 Frontend
 
-The frontend of PlaceIQ is a modern, high-performance Single Page Application (SPA) built to serve as the user-facing command center for students, corporate HRs, and university administrators. It leverages strict typed routing, real-time WebSockets, and declarative data fetching to ensure a seamless user experience.
+[![React](https://img.shields.io/badge/React-19.2.6-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8.0.12-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4.3-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![React Query](https://img.shields.io/badge/React_Query-v5-FF4154?style=for-the-badge&logo=reactquery&logoColor=white)](https://tanstack.com/query)
+[![Socket.io](https://img.shields.io/badge/Socket.io-4.8.3-010101?style=for-the-badge&logo=socket.io&logoColor=white)](https://socket.io/)
 
-## 🔗 Live Deployment
-- **Client Application**: [https://placeiq-frontend.vercel.app](https://placeiq-frontend.vercel.app) *(Update with actual Vercel URL)*
+🔗 **Live Production Deploy:** [placeiq-frontend.vercel.app](https://placeiq-frontend.vercel.app/)
 
-## 🛠️ Core Technology Stack
+Welcome to the **PlaceIQ Frontend Client**—a premium, enterprise-grade React 19 Single Page Application (SPA) designed to serve as the highly interactive command center for the **PlaceIQ Smart Placement Tracking Portal**.
 
-- **Framework**: React 19 optimized and bundled via **Vite**.
-- **Aesthetic Styling**: Tailwind CSS 4.0 paired with Framer Motion for fluid micro-animations and a glassmorphic design system.
-- **State & Data Caching**: TanStack React Query (v5) handles API fetching, request deduplication, and automatic background refetching.
-- **Code Assessment Workspace**: `@monaco-editor/react` embeds a full-featured code editor directly into the browser for technical interview rounds.
-- **Pipeline Management**: `@dnd-kit/core` powers the drag-and-drop Applicant Tracking System (ATS) Kanban boards.
-- **Visual Analytics**: Recharts generates dynamic data visualizations for administrative dashboards.
-- **Real-Time Connectivity**: `socket.io-client` maintains a persistent connection to the server for instant UI alerts.
+This client application is meticulously engineered around a glassmorphic aesthetic, strict layout constraints, crisp typography, and fluid micro-animations powered by Framer Motion. It operates seamlessly in multi-role environments (`student`, `admin`, `company`, `alumni`), offering instant state synchronization via TanStack Query, real-time WebSocket alerts, role-isolated dashboards, and an embedded Monaco code editor.
 
-## 🏛️ Frontend Architecture and Routing
+---
 
-The application implements a modular component architecture. Security and role-based permissions are enforced right at the routing layer within `App.jsx`. 
+## 💎 Core Architecture Highlights
 
-- **Layout Wrapper**: The `AppLayout` component constructs the core UI skeleton, managing the responsive Sidebar and the Topbar (which houses notifications and user profiles). Sub-routes render dynamically within this frame.
-- **Route Guards**: A custom `ProtectedRoute.jsx` component intercepts route changes, verifying the user's role against the required permissions before rendering the view.
+### 1. Advanced Role-Based Routing & Guards (`src/components/common/ProtectedRoute.jsx`)
+Client routes are guarded at the component level to ensure strict isolation:
+* **Granular Permissions:** Supports array-based permissions checking against the decoded JWT user role (e.g., `roles={['admin']}`).
+* **Seamless Interception:** Authenticates first; if a student attempts to navigate to recruiter endpoints, they are seamlessly redirected to `/unauthorized` to prevent unauthorized access.
+
+### 2. State Hydration & API Interception (`src/api/axios.js`)
+Powered by an Axios interceptor pattern coupled with **TanStack React Query**:
+* **Token Reconciliation:** On every request, a request interceptor automatically retrieves the JWT from `localStorage` and attaches it to the `Authorization` header.
+* **Instant Logout Cleanup:** A response interceptor watches for `401 Unauthorized` responses. If triggered, it purges local caches and forces a secure redirect to the login page.
+* **Declarative Fetching:** React Query handles caching, background refetching, and deduping, ensuring the UI is always perfectly in sync with the database without redundant network waterfalls.
+
+### 3. Real-Time WebSocket Engine (`src/hooks/useSocket.jsx`)
+* **Dynamic Room Subscriptions:** Upon authentication, users are subscribed to private Socket.io rooms based on their specific User ID, while administrators join a global `room:admins` channel.
+* **Live Micro-Interactions:** Receives events like `application:status_changed` and triggers highly-stylized, glassmorphic toast notifications globally without requiring page reloads.
+
+### 4. Interactive ATS Pipeline & IDE Workspace
+* **Drag-and-Drop ATS:** Utilizes `@dnd-kit/core` to render fluid, interactive Kanban boards for admins to seamlessly transition candidate application stages.
+* **Embedded Coding Canvas:** A standalone route (`AssessmentWorkspace.jsx`) strips away sidebars, rendering a full-screen **Monaco Editor** for distraction-free technical programming assessments.
+
+---
+
+## 🗺️ Client Navigation & State Architecture
+
+This diagram visualizes the application's page structure, route protection, and real-time state synchronization:
 
 ```mermaid
 graph TD
-    App[App.jsx - Main Router]
-    Auth[Authentication Context\nuseAuth]
-    Guards[Protected Route Wrapper]
-    
-    Layout[App Layout Component]
-    Sidebar[Role-based Sidebar]
-    Topbar[Navigation & Notifications]
-    
-    Pages[Role-Specific Pages]
-    AdminPages[Admin Dashboard]
-    StudentPages[Student Dashboard]
-    CompanyPages[Company Dashboard]
-    AlumniPages[Alumni Dashboard]
-    
-    App --> Auth
-    App --> Guards
-    Guards --> Layout
-    Layout --> Sidebar
-    Layout --> Topbar
-    Layout --> Pages
-    
-    Pages --> AdminPages
-    Pages --> StudentPages
-    Pages --> CompanyPages
-    Pages --> AlumniPages
+    %% Base Styling
+    classDef default fill:#f5f5f7,stroke:#d2d2d7,stroke-width:1px,color:#1d1d1f,font-family:Inter;
+    classDef secure fill:#e8f4fd,stroke:#0066cc,stroke-width:1.5px,color:#004499,font-family:Inter;
+    classDef admin fill:#fbf0e6,stroke:#e07a5f,stroke-width:1.5px,color:#a04020,font-family:Inter;
+    classDef state fill:#f4ecf7,stroke:#8e44ad,stroke-width:1.5px,color:#6c3483,font-family:Inter;
+
+    %% Elements
+    Root["AppLayout (Sidebar & Topbar)"]:::default
+    Login["🔑 Login & OTP"]:::default
+    Register["📝 Register Route"]:::default
+    QueryClient[("React Query Cache <br> api/axios.js")]:::state
+
+    %% Protected Routes
+    StudentSec["🔒 ProtectedRoute (STUDENT)"]:::secure
+    AdminSec["🔒 ProtectedRoute (ADMIN / COMPANY)"]:::admin
+
+    %% Dashboard Panels
+    StudentDash["Student Workspace (Jobs, External)"]:::secure
+    Assessment["💻 Monaco IDE Workspace"]:::secure
+    AdminDash["Admin Pipeline (ATS Kanban)"]:::admin
+    Analytics["📊 Recharts Analytics"]:::admin
+
+    %% Connections
+    Login -.->|Authenticates| QueryClient
+    Register -.->|Dispatches| Login
+    QueryClient -.->|Hydrates State| Root
+
+    Root --> StudentSec
+    Root --> AdminSec
+
+    StudentSec -->|Role Verified| StudentDash
+    StudentSec -->|Stand-alone Route| Assessment
+    AdminSec -->|Role Verified| AdminDash
+    AdminSec -->|Role Verified| Analytics
 ```
 
-## 🔄 Data Fetching and State Synchronization
+---
 
-To ensure the user interface is always synced with the database without manual browser refreshes, the client utilizes TanStack Query alongside a configured Axios instance.
-
-- **Axios Interceptors**: Automatically inject the JWT token from `localStorage` into the Authorization headers of outgoing requests. If a `401 Unauthorized` response is received, the interceptor immediately clears stale data and redirects the user to the login screen.
-- **Query Invalidation**: When a user performs an action (e.g., submitting an application), mutation handlers automatically invalidate specific query caches (like `['applications']`), triggering an immediate UI update.
-
-```mermaid
-sequenceDiagram
-    participant Component
-    participant ReactQuery as TanStack Query
-    participant Axios
-    participant Server
-
-    Component->>ReactQuery: useQuery(['jobs'])
-    alt Cache is valid
-        ReactQuery-->>Component: Return Cached Data
-    else Cache invalid or missing
-        ReactQuery->>Axios: Fetch Data
-        Axios->>Axios: Request Interceptor (Attach JWT)
-        Axios->>Server: GET /api/jobs
-        Server-->>Axios: HTTP 200 OK
-        Axios->>Axios: Response Interceptor
-        Axios-->>ReactQuery: Data Payload
-        ReactQuery->>ReactQuery: Update Cache
-        ReactQuery-->>Component: Return Fresh Data
-    end
-```
-
-## ⚡ Real-Time WebSocket Implementation
-
-The `useSocket` context provider initializes the Socket.io connection the moment a user authenticates. 
-
-- **Room Subscriptions**: Students join a private room matching their User ID, while administrators join a global `room:admins` channel.
-- **Event Handling**: 
-  - `application:status_changed`: Displays a toast notification when an application advances.
-  - `job:new_posted`: Alerts all online students of a newly approved job opportunity.
-  - `admin:announcement`: Triggers a high-priority banner for college-wide broadcasts.
-
-```mermaid
-flowchart LR
-    SocketContext[Socket Provider]
-    Server[Node.js WebSocket Server]
-    
-    Server -->|application:status_changed| SocketContext
-    Server -->|job:new_posted| SocketContext
-    Server -->|admin:announcement| SocketContext
-    
-    SocketContext --> Toast[Trigger UI Notification]
-    SocketContext --> Badge[Update Unread Badge]
-    SocketContext --> Query[Invalidate React Query Cache]
-```
-
-## 📁 Directory Structure
+## 📂 Project Directory Structure
 
 ```text
-client/src/
-├── api/              # Axios configuration and global interceptors
-├── assets/           # Static media assets
-├── components/       # Reusable UI elements
-│   ├── common/       # Shared components (ProtectedRoute)
-│   ├── layout/       # Structural components (AppLayout, Sidebar, Topbar)
-│   └── ui/           # Base glassmorphic elements (Buttons, Inputs, Modals)
-├── hooks/            # Custom React context hooks (useAuth, useSocket)
-├── lib/              # Utility functions (Tailwind class mergers via clsx)
-├── pages/            # Routable view components cleanly separated by role
-└── main.jsx          # Application entry point and Context Providers
+client/
+├── src/
+│   ├── api/                # Axios configuration and global JWT interceptors
+│   ├── assets/             # Static media and brand assets
+│   ├── components/         # Reusable UI elements
+│   │   ├── common/         # Shared wrappers (ProtectedRoute)
+│   │   ├── layout/         # AppLayout, Sidebar, Topbar components
+│   │   └── ui/             # Glassmorphic inputs, badges, spinners
+│   ├── hooks/              # Custom context hooks (useAuth, useSocket)
+│   ├── lib/                # Utility mergers (tw.js for Tailwind classes)
+│   ├── pages/              # Routable view components separated by user role
+│   │   ├── admin/          # TPO Dashboard, Kanban, Bulk Upload
+│   │   ├── company/        # HR Job Postings, Assessments
+│   │   └── student/        # Candidate Profile, IDE, External Jobs
+│   ├── App.jsx             # Main React Router definitions
+│   └── main.jsx            # DOM mounting and Context Providers
+├── .env.production         # Vercel production environment variables
+├── tailwind.config.js      # Custom theme and animation config
+└── vite.config.js          # Vite build pipeline config
 ```
-
-## 💻 Development Commands
-
-Navigate to the `client/` directory and use the following scripts:
-
-- `npm run dev`: Starts the Vite development server on port 5173 with Hot Module Replacement (HMR).
-- `npm run build`: Compiles and minifies the application into the `/dist` directory for production deployment.
-- `npm run preview`: Serves the production build locally to test performance and routing before deployment.
-- `npm run lint`: Executes ESLint rules to maintain code quality.

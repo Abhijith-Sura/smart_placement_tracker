@@ -1,163 +1,154 @@
-# PlaceIQ Backend Engineering Documentation
+# 🚀 PlaceIQ Backend - MERN Placement API
 
-The PlaceIQ backend is a modular, high-performance RESTful API and WebSocket server built with Node.js and Express. It serves as the intelligent core of the platform, managing complex relational data via MongoDB, orchestrating automated background scheduling, and integrating securely with external AI and email microservices.
+[![Node.js](https://img.shields.io/badge/Node.js-18.x-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express.js](https://img.shields.io/badge/Express.js-4.19-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-Realtime-010101?style=for-the-badge&logo=socket.io&logoColor=white)](https://socket.io/)
 
-## 🔗 Live Deployment
-- **API Server**: [https://placeiq-smart-placement.onrender.com](https://placeiq-smart-placement.onrender.com)
+🔗 **Live Production Deploy:** [placeiq-smart-placement.onrender.com](https://placeiq-smart-placement.onrender.com/)
 
-## 🛠️ Core Technology Stack
+A robust, enterprise-grade, secure RESTful API built on the MERN stack for the **PlaceIQ Placement Portal**. This API supports OTP authentication, rich role-based access control (RBAC), secure media uploads via Cloudinary, automated background crons, and AI-powered LLM integrations via Groq SDK.
 
-- **Runtime & Framework**: Node.js utilizing Express.js for fast, modular HTTP routing.
-- **Database & ODM**: MongoDB Atlas cluster queried via the strict-schema Mongoose ODM.
-- **Real-Time Server**: Socket.io enabling persistent, bidirectional TCP connections for live alerts.
-- **Background Automation**: `node-cron` driving scheduled tasks and periodic API crawls.
-- **AI Intelligence Layer**: Groq SDK interacting with the Llama-3.3-70b-versatile model to evaluate student resumes.
-- **Document Processing**: `pdf-parse` for text extraction from candidate uploads, and `pdfkit` to compile printable resumes.
-- **Communication & Mailing**: Nodemailer configured with Brevo SMTP for transactional emails, paired with `ics` to attach standard calendar sync files.
-- **Data Export**: `exceljs` and `xlsx` for parsing bulk student uploads and generating administrative placement reports.
-- **Cloud Storage**: Multer and Cloudinary securely handle company logo and document uploads.
+---
 
-## 🏛️ System Architecture
+## 🛠️ Tech Stack & Key Integrations
 
-The backend adheres to a strict Controller-Service-Model paradigm. Incoming HTTP requests pass through security middleware (JWT validation and RBAC checks) before hitting business logic controllers, ensuring protected operations.
+*   **Core Server Framework:** Node.js & Express
+*   **Database & Object Modeling:** MongoDB & Mongoose (Schema validation, populated relations, strict querying)
+*   **Real-Time Gateway:** Socket.io for multiplexed bidirectional TCP events (Chat, Notifications)
+*   **Security & Encryption:** JWT (JSON Web Tokens) with Cookie/Header authorization support, bcryptjs (salt password hashing)
+*   **AI Integration:** Groq SDK utilizing `llama-3.3-70b-versatile` for ATS resume text parsing and scoring
+*   **Media Hosting & Storage:** Cloudinary API integrated with Multer
+*   **Task Automation:** `node-cron` for 6-hour Remotive job crawls and 8:00 AM daily interview ICS alerts
+*   **Reporting:** `exceljs` for exporting admin analytics, `pdfkit` for candidate resume generation
+
+---
+
+## 🏗️ Architecture & Flow Diagram
+
+The following architecture diagram represents the request-response lifecycle from the client app down to the database, cron schedulers, and external cloud integrations:
 
 ```mermaid
 graph TD
-    Router[Express Router]
-    AuthMid[Authentication & Role Middleware]
-    Controllers[Business Logic Controllers]
-    Models[Mongoose ODM Models]
+    Client[Client App: React] -->|HTTP Requests| CORS[CORS Filter]
+    CORS --> Router{Express Route Dispatcher}
     
-    Cron[node-cron Schedulers]
-    Socket[Socket.io Manager]
+    Router -->|/api/auth| AuthRouter[Auth Controller]
+    Router -->|/api/students| StudentRouter[Student Controller]
+    Router -->|/api/applications| AppRouter[Application Controller]
+    Router -->|/api/resume| ResumeRouter[Resume LLM Controller]
     
-    Router --> AuthMid
-    AuthMid --> Controllers
-    Controllers --> Models
+    AuthRouter --> AuthMid[verifyToken Middleware]
+    StudentRouter --> AuthMid
+    AppRouter --> AuthMid
     
-    Controllers --> External[External API Services]
-    External --> Groq[Groq AI Llama-3.3]
-    External --> Brevo[Brevo SMTP / Emails]
-    External --> Cloudinary[Cloudinary Vault]
+    AuthMid --> DB[(MongoDB Atlas)]
     
-    Cron -->|Daily 8:00 AM| Email[ICS Interview Reminders]
-    Cron -->|Every 6 Hours| API[Remotive Job Sync]
+    ResumeRouter --> Groq[Groq AI Llama-3.3]
+    StudentRouter --> Cloudinary[Cloudinary Media Server]
+    
+    Cron[node-cron Engine] -->|Every 6 Hours| Remotive[Remotive API]
+    Cron -->|Daily at 8 AM| Brevo[Brevo SMTP / ICS Calendar]
+    Cron --> DB
 ```
 
-## 🗄️ Database Entity Relationship Models
+---
 
-The system relies on highly relational Mongoose schemas to track the placement lifecycle.
+## 📂 Project Directory Structure
 
-- **User**: Manages roles, secure bcrypt-hashed passwords, and OTP verification states.
-- **StudentProfile**: Houses CGPA, active backlogs, skills arrays, and AI-generated ATS analysis logs.
-- **Job**: Stores job requirements (branches allowed, minimum grades) and administrative approval status.
-- **Application**: Links a Student to a Job, housing a complex `rounds` sub-document array tracking individual interview scores, feedback, and scheduled times.
-- **Assessment**: Configures coding environments, maintaining test cases and student code submissions.
+Here is a high-level mapping of the backend codebase:
 
-```mermaid
-erDiagram
-    User ||--o{ StudentProfile : "has profile"
-    User ||--o{ Company : "has profile"
-    Company ||--o{ Job : "posts"
-    StudentProfile ||--o{ Application : "submits"
-    Job ||--o{ Application : "receives"
-    Job ||--o{ Assessment : "requires"
-    User ||--o{ Notification : "receives"
-    User ||--o{ ChatRoom : "participates in"
-
-    User {
-        ObjectId _id
-        String name
-        String email
-        String role
-    }
-    Job {
-        ObjectId _id
-        String role
-        Number minCGPA
-        String status
-    }
-    Application {
-        ObjectId _id
-        String status
-        Array rounds
-    }
+```text
+server/
+├── config/                # Service Integrations & Configurations
+│   └── db.js              # MongoDB Atlas connection wrapper
+├── controllers/           # Business Logic & Core Handlers
+│   ├── authController.js  # Registration, OTP dispatch, JWT issuance
+│   ├── applicationController.js # ATS pipeline updates, interview scheduling
+│   └── resumeController.js# LLM context prompting and pdfkit generators
+├── middleware/            # Global Express interceptors
+│   ├── authMiddleware.js  # JWT decoding and RBAC verification
+│   └── errorMiddleware.js # Standardized error JSON formatting
+├── models/                # Mongoose Database Schemas
+│   ├── UserModel.js       # Core accounts, roles, bcrypt hashing
+│   ├── Job.js             # Vacancy criteria and constraints
+│   └── Application.js     # Embedded interview rounds sub-documents
+├── routes/                # REST API Endpoint definitions
+├── utils/                 # Utilities and Background Jobs
+│   ├── cronJobs.js        # Scheduled routines (Reminders, APIs)
+│   ├── jobFetcher.js      # Remotive API sanitization and upserts
+│   └── socketManager.js   # WebSocket room bindings and presence
+├── .env                   # Local configuration variables
+├── server.js              # Application entry point, CORS config, Port bind
+└── render.yaml            # Render infrastructure deployment file
 ```
 
-## 🔄 Core Backend Workflows
+---
 
-### 1. AI Resume Analysis Flow
-When a student triggers an ATS check, the backend orchestrates a multi-step sequence to parse, analyze, and store the evaluation.
+## 🔑 Environment Configuration
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant ResumeController
-    participant PDFParser
-    participant GroqAPI as Groq LLM
-    participant DB
+To run this backend, create a `.env` file in the root folder of the `server/` directory:
 
-    Client->>ResumeController: POST /api/resume/analyze (Cloudinary URL)
-    ResumeController->>PDFParser: Fetch & Extract PDF Text
-    PDFParser-->>ResumeController: Raw Text Data
-    ResumeController->>GroqAPI: Construct Prompt & Send Context
-    GroqAPI-->>ResumeController: JSON ATS Evaluation
-    ResumeController->>DB: Update StudentProfile with Analysis
-    ResumeController-->>Client: Return Structured Evaluation Data
-```
-
-### 2. Automated Background Schedulers (`node-cron`)
-The backend operates autonomous routines to keep data fresh and users informed.
-- **External Job Sync**: Every 6 hours, the server queries the Remotive API, de-duplicates records against the database, and backfills missing company logos.
-- **Interview Reminders**: Every morning at 8:00 AM, the database is scanned for candidate interviews scheduled within the next 24 hours. The system generates `.ics` calendar invites and emails them out to ensure zero missed appointments.
-
-```mermaid
-flowchart TD
-    CronTrigger[Cron Job: Every 6 Hours] --> Fetch[Fetch Remotive API]
-    Fetch --> Parse[Parse External Jobs]
-    Parse --> Deduplicate[Check Database for Duplicates]
-    Deduplicate --> Save[Upsert to ExternalJob Collection]
-    Save --> LogoCheck{Logo Missing?}
-    LogoCheck -->|Yes| Backfill[Execute Logo Backfill Controller]
-    LogoCheck -->|No| Complete[Sync Complete]
-```
-
-## 🌐 API Endpoint Summary Reference
-
-- `/api/auth`: Handles secure registration, login, OTP dispatches, and token verification.
-- `/api/students`: Manages student profile updates and resume uploads to Cloudinary.
-- `/api/jobs`: Coordinates job creation, administrative approvals, and eligibility filtering.
-- `/api/applications`: Submits applications and manipulates ATS Kanban stages.
-- `/api/admin`: Compiles system-wide analytics, handles Excel bulk uploads, and exports placement lists.
-- `/api/companies`: Manages corporate verification and profile administration.
-- `/api/resume`: Executes AI parsing, scoring algorithms, and dynamic PDF resume generation.
-- `/api/chat`: establishes peer-to-peer messaging rooms and retrieves chat histories.
-- `/api/notifications`: Retrieves and acknowledges persistent user alerts.
-- `/api/external-jobs`: Accesses the locally cached database of remote opportunities.
-- `/api/assessments`: Provisions coding challenges and securely processes candidate code submissions.
-
-## 🔐 Environment Configuration
-
-To run the backend locally, create a `.env` file at the root of the `server/` directory and populate it with the following required keys:
-
-```env
+```ini
+# Application Running Port
 PORT=5000
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
 
-MONGO_URI=mongodb_atlas_connection_string
+# Database Connection string (MongoDB Atlas)
+MONGO_URI=your_mongodb_connection_string
 
-JWT_SECRET=secure_jwt_secret
+# Encryption secrets
+JWT_SECRET=your_jwt_signature_secret_key
 JWT_EXPIRE=7d
 JWT_COOKIE_EXPIRE=7
 
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+# Cloudinary Integration API credentials
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 
-EMAIL_FROM=system@domain.com
+# Brevo Mailer Gateway (SMTP)
+EMAIL_FROM=system@placeiq.com
 EMAIL_FROM_NAME="PlaceIQ System"
-BREVO_API_KEY=your_brevo_smtp_key
+BREVO_API_KEY=your_brevo_smtp_api_key
 
-GROQ_API_KEY=your_groq_api_key
+# Groq AI Integration
+GROQ_API_KEY=your_groq_llama3_api_key
 ```
+
+---
+
+## 📦 Database Schemas & Data Models
+
+### 1. User Model (`User.js`)
+Represents students, corporate HRs, alumni, and administrators.
+
+| Field | Type | Attributes | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | String | Required | Full name of the account owner |
+| `email` | String | Required, Unique | Email address used for authentication |
+| `password` | String | Required | Bcrypt-hashed password string |
+| `role` | String | Enum | System privilege (`student`, `admin`, `company`, `alumni`) |
+| `otpCode` | String | Optional | 6-digit verification code |
+
+### 2. Job Model (`Job.js`)
+Represents campus recruitment drives and corporate vacancies.
+
+| Field | Type | Attributes | Description |
+| :--- | :--- | :--- | :--- |
+| `companyId` | ObjectId | Ref: User | The corporate account that posted the job |
+| `role` | String | Required | Job Title / Designation |
+| `minCGPA` | Number | Default: 0 | Strict filter blocking unqualified students |
+| `allowedBranches`| Array[String] | Required | Target engineering branches (e.g. `CSE`, `ECE`) |
+| `status` | String | Default: 'pending'| Admin approval state before going public |
+
+### 3. Application Model (`Application.js`)
+Links a student to a job, tracking their ATS progression.
+
+| Field | Type | Attributes | Description |
+| :--- | :--- | :--- | :--- |
+| `studentId` | ObjectId | Ref: User | Candidate identifier |
+| `jobId` | ObjectId | Ref: Job | Target vacancy identifier |
+| `status` | String | Enum | Current pipeline stage (`applied`, `shortlisted`, `placed`) |
+| `rounds` | Array[Object] | Sub-schema | Historical log of interview assessments and scores |
