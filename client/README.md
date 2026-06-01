@@ -1,4 +1,4 @@
-# 🚀 PlaceIQ Client — Premium React 19 Frontend
+# PlaceIQ Client - React 19 Frontend
 
 [![React](https://img.shields.io/badge/React-19.2.6-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.0.12-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
@@ -6,66 +6,61 @@
 [![React Query](https://img.shields.io/badge/React_Query-v5-FF4154?style=for-the-badge&logo=reactquery&logoColor=white)](https://tanstack.com/query)
 [![Socket.io](https://img.shields.io/badge/Socket.io-4.8.3-010101?style=for-the-badge&logo=socket.io&logoColor=white)](https://socket.io/)
 
-🔗 **Live Production Deploy:** [placeiq-frontend.vercel.app](https://placeiq-frontend.vercel.app/)
+Live Production Deployment: https://placeiq-frontend.vercel.app
 
-Welcome to the **PlaceIQ Frontend Client**—a premium, enterprise-grade React 19 Single Page Application (SPA) designed to serve as the highly interactive command center for the **PlaceIQ Smart Placement Tracking Portal**.
+This is the frontend client application for the PlaceIQ Smart Placement Tracking Portal. It is structured as a React 19 Single Page Application (SPA), bundled with Vite, and designed with a responsive, glassmorphic visual system built using Tailwind CSS. 
 
-This client application is meticulously engineered around a glassmorphic aesthetic, strict layout constraints, crisp typography, and fluid micro-animations powered by Framer Motion. It operates seamlessly in multi-role environments (`student`, `admin`, `company`, `alumni`), offering instant state synchronization via TanStack Query, real-time WebSocket alerts, role-isolated dashboards, and an embedded Monaco code editor.
-
----
-
-## 💎 Core Architecture Highlights
-
-### 1. Advanced Role-Based Routing & Guards (`src/components/common/ProtectedRoute.jsx`)
-Client routes are guarded at the component level to ensure strict isolation:
-* **Granular Permissions:** Supports array-based permissions checking against the decoded JWT user role (e.g., `roles={['admin']}`).
-* **Seamless Interception:** Authenticates first; if a student attempts to navigate to recruiter endpoints, they are seamlessly redirected to `/unauthorized` to prevent unauthorized access.
-
-### 2. State Hydration & API Interception (`src/api/axios.js`)
-Powered by an Axios interceptor pattern coupled with **TanStack React Query**:
-* **Token Reconciliation:** On every request, a request interceptor automatically retrieves the JWT from `localStorage` and attaches it to the `Authorization` header.
-* **Instant Logout Cleanup:** A response interceptor watches for `401 Unauthorized` responses. If triggered, it purges local caches and forces a secure redirect to the login page.
-* **Declarative Fetching:** React Query handles caching, background refetching, and deduping, ensuring the UI is always perfectly in sync with the database without redundant network waterfalls.
-
-### 3. Real-Time WebSocket Engine (`src/hooks/useSocket.jsx`)
-* **Dynamic Room Subscriptions:** Upon authentication, users are subscribed to private Socket.io rooms based on their specific User ID, while administrators join a global `room:admins` channel.
-* **Live Micro-Interactions:** Receives events like `application:status_changed` and triggers highly-stylized, glassmorphic toast notifications globally without requiring page reloads.
-
-### 4. Interactive ATS Pipeline & IDE Workspace
-* **Drag-and-Drop ATS:** Utilizes `@dnd-kit/core` to render fluid, interactive Kanban boards for admins to seamlessly transition candidate application stages.
-* **Embedded Coding Canvas:** A standalone route (`AssessmentWorkspace.jsx`) strips away sidebars, rendering a full-screen **Monaco Editor** for distraction-free technical programming assessments.
+The client handles user interactions across four discrete roles: students, training officers, company recruiters, and alumni, with role-based routing, real-time message feeds, data visualization dashboards, and an integrated coding sandbox.
 
 ---
 
-## 🗺️ Client Navigation & State Architecture
+## Core Architecture Highlights
 
-This diagram visualizes the application's page structure, route protection, and real-time state synchronization:
+### 1. Role-Based Route Protection (src/components/common/ProtectedRoute.jsx)
+Router security is enforced at the component level:
+* **Permission Constraints**: Wraps protected view components, verifying user authentication status and matching the user's role against permitted claims (e.g. `roles={['admin', 'company']}`).
+* **Interception**: Unauthenticated navigation attempts redirect to `/login`, while unauthorized operations redirect users to `/unauthorized` with history stack replacements to avoid loop states.
+
+### 2. Cached State Synchronization (src/api/axios.js)
+Leverages TanStack React Query to decouple state synchronization from standard page refreshes:
+* **Request Interceptor**: Axios automatically parses `localStorage` for active JWTs on every outbound HTTP call and appends it to the authorization headers.
+* **Response Interceptor**: A wrapper checks incoming HTTP codes. In case of `401 Unauthorized` responses, it automatically flushes local caches and logs the user out.
+* **Declarative Data Fetching**: Employs React Query mutations and automatic invalidations to keep components synchronized with backend state changes in real time.
+
+### 3. Persistent Real-Time Streams (src/hooks/useSocket.jsx)
+* **Dedicated WebSocket Client**: Establishes a persistent TCP tunnel with the backend upon successful login.
+* **Personalized Channel Broadcasts**: Subscribes users to channels specific to their user ID (for application changes or private chat messages) and class-wide channels (for campus announcement broadcasts).
+
+### 4. Technical Assessment IDE (src/pages/student/AssessmentWorkspace.jsx)
+* **Monaco Integration**: Integrates the Monaco Editor (`@monaco-editor/react`) inside a dedicated coding interface.
+* **State Sandbox**: Manages code buffers, language switches (Java, Python, C++), and displays execution test-case evaluations in a side pane, isolated from standard layouts.
+
+---
+
+## Navigation & Page Routing Topology
+
+This diagram outlines the routing boundaries, authentication state hydrations, and view rendering targets:
 
 ```mermaid
 graph TD
-    %% Base Styling
     classDef default fill:#f5f5f7,stroke:#d2d2d7,stroke-width:1px,color:#1d1d1f,font-family:Inter;
     classDef secure fill:#e8f4fd,stroke:#0066cc,stroke-width:1.5px,color:#004499,font-family:Inter;
     classDef admin fill:#fbf0e6,stroke:#e07a5f,stroke-width:1.5px,color:#a04020,font-family:Inter;
     classDef state fill:#f4ecf7,stroke:#8e44ad,stroke-width:1.5px,color:#6c3483,font-family:Inter;
 
-    %% Elements
     Root["AppLayout (Sidebar & Topbar)"]:::default
-    Login["🔑 Login & OTP"]:::default
-    Register["📝 Register Route"]:::default
+    Login["Login & OTP Verification"]:::default
+    Register["Register Component"]:::default
     QueryClient[("React Query Cache <br> api/axios.js")]:::state
 
-    %% Protected Routes
-    StudentSec["🔒 ProtectedRoute (STUDENT)"]:::secure
-    AdminSec["🔒 ProtectedRoute (ADMIN / COMPANY)"]:::admin
+    StudentSec["ProtectedRoute (STUDENT)"]:::secure
+    AdminSec["ProtectedRoute (ADMIN / COMPANY)"]:::admin
 
-    %% Dashboard Panels
-    StudentDash["Student Workspace (Jobs, External)"]:::secure
-    Assessment["💻 Monaco IDE Workspace"]:::secure
+    StudentDash["Student Workspace (Jobs, External Feed)"]:::secure
+    Assessment["Monaco IDE Workspace"]:::secure
     AdminDash["Admin Pipeline (ATS Kanban)"]:::admin
-    Analytics["📊 Recharts Analytics"]:::admin
+    Analytics["Recharts Analytics Panel"]:::admin
 
-    %% Connections
     Login -.->|Authenticates| QueryClient
     Register -.->|Dispatches| Login
     QueryClient -.->|Hydrates State| Root
@@ -81,26 +76,33 @@ graph TD
 
 ---
 
-## 📂 Project Directory Structure
+## Codebase Directory Layout
 
 ```text
-client/
-├── src/
-│   ├── api/                # Axios configuration and global JWT interceptors
-│   ├── assets/             # Static media and brand assets
-│   ├── components/         # Reusable UI elements
-│   │   ├── common/         # Shared wrappers (ProtectedRoute)
-│   │   ├── layout/         # AppLayout, Sidebar, Topbar components
-│   │   └── ui/             # Glassmorphic inputs, badges, spinners
-│   ├── hooks/              # Custom context hooks (useAuth, useSocket)
-│   ├── lib/                # Utility mergers (tw.js for Tailwind classes)
-│   ├── pages/              # Routable view components separated by user role
-│   │   ├── admin/          # TPO Dashboard, Kanban, Bulk Upload
-│   │   ├── company/        # HR Job Postings, Assessments
-│   │   └── student/        # Candidate Profile, IDE, External Jobs
-│   ├── App.jsx             # Main React Router definitions
-│   └── main.jsx            # DOM mounting and Context Providers
-├── .env.production         # Vercel production environment variables
-├── tailwind.config.js      # Custom theme and animation config
-└── vite.config.js          # Vite build pipeline config
+client/src/
+├── api/              # Axios configuration and global JWT interceptors
+├── assets/           # Static media assets (brand logo, vector images)
+├── components/       # Reusable components
+│   ├── common/       # ProtectedRoute, Spinner, Toast notifications
+│   ├── layout/       # Sidebar, Topbar, AppLayout structures
+│   └── ui/           # Custom buttons, modals, badges, input controls
+├── hooks/            # useAuth, useSocket, useTheme context configurations
+├── lib/              # Client utilities and class mergers (tw.js)
+├── pages/            # Role-isolated routing components
+│   ├── admin/        # Dashboard, Analytics, Pipeline, Campaigns, Students
+│   ├── company/      # Dashboard, PostJob, Assessments, Events
+│   └── student/      # Dashboard, Jobs, Applications, Profile, AssessmentIDE
+├── App.css           # Global visual styling rules
+├── App.jsx           # Master route layout definitions
+└── main.jsx          # Entry point mounting context providers
 ```
+
+---
+
+## Command Reference
+
+Run the following commands inside the `client/` directory for local development:
+* `npm run dev`: Starts the Vite development server on `http://localhost:5173`.
+* `npm run build`: Bundles the application assets into minified production files in `dist/`.
+* `npm run preview`: Spins up a local server to test the production build build outputs.
+* `npm run lint`: Performs static code checks to verify code formatting guidelines.
